@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import json
 import os
+from sklearn.decomposition import PCA
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -132,12 +133,22 @@ class OrderFlow(object):
             
             df.to_csv(filename)
             print(f"Saved: {filename}")
+            
+    def generate_ofi_I_h_i_t(self, i="AAPL"):
+        ofi_data = pd.read_csv(f'./processd_data/ofi_m_h_i_t/multi_level_ofi_{i}.csv', index_col=0)
+        pca = PCA(n_components=1)
+        pca.fit(ofi_data.drop(columns=['symbol', 'minute']))
+        w1 = pca.components_[0]
+        w1_l1 = np.sum(np.abs(w1))
+        ofi_projected = ofi_data.drop(columns=['symbol', 'minute']).values @ w1 / w1_l1
+        ofi_data['ofi_pca_proj'] = ofi_projected
+        
+        filename = f'processd_data/ofi_I_h_i_t/integrated_ofi_{i}.csv'
+        if os.path.exists(filename):
+            print(f"Already found: {filename}")
+        else:
+            ofi_data.to_csv(filename)
+            print(f"Saved: {filename}")
         
         
-orderFlow = OrderFlow('./first_25000_rows.csv')
 
-# generate best level OFI
-orderFlow.generate_OFI_0_h_i_t(i="AAPL")
-# generate deeper level ofi
-orderFlow.generate_ofi_m_h_i_t(i="AAPL")
-# print(f"The definition of columns: \n{json.dumps(orderFlow.orderFlowDfColumns(), indent=4)}")
